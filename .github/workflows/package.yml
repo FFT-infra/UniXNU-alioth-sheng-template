@@ -199,7 +199,7 @@ jobs:
           found = glob.glob('UniXNU/out/sheng/*/*/tree/drivers/AdrenoMetal/bridge/patches/0064-*.patch')
           if len(found) != 1:
               raise SystemExit(f'expected one 0064 patch under the tree, found {found}')
-          extra = Path('.github/patches/ios27-read-pages.diff').read_text()
+          extra = Path('device/.github/patches/ios27-read-pages.diff').read_text()
           target = Path(found[0])
           text = target.read_text()
           if extra.strip() in text:
