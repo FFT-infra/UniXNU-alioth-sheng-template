@@ -190,6 +190,24 @@ jobs:
                               '--window', '{}={}:{}'.format(name, raw, volume)], check=True)
               raw.unlink(missing_ok=True)
           PYSTEP
+      - name: Extend the Metal bridge patch for iOS
+        if: inputs.os == '27'
+        run: |
+          python3 - <<'PYSTEP'
+          import glob
+          from pathlib import Path
+          found = glob.glob('UniXNU/out/sheng/*/*/tree/drivers/AdrenoMetal/bridge/patches/0064-*.patch')
+          if len(found) != 1:
+              raise SystemExit(f'expected one 0064 patch under the tree, found {found}')
+          extra = Path('.github/patches/ios27-read-pages.diff').read_text()
+          target = Path(found[0])
+          text = target.read_text()
+          if extra.strip() in text:
+              print('0064 already carries the iOS read_pages guard')
+          else:
+              target.write_text(text.rstrip('\n') + '\n' + extra)
+              print('extended', target)
+          PYSTEP
       - name: package
         working-directory: device
         env:
