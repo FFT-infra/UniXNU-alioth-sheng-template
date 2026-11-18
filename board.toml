@@ -64,7 +64,7 @@
 tool = "scripts/build-boot-runtime.py"
 target = "ios27"
 build = "24A446"
-data_gib = 215
+data_gib = 96
 skip_setup = true
 trust_components = ["StaticTrustCache", "Cryptex1,SystemTrustCache", "Cryptex1,AppTrustCache"]
 wallpapers = ["ipados27", "ipados27-floating"]

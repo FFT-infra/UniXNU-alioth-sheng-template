@@ -142,6 +142,38 @@ jobs:
             UniXNU/out/sheng/macos-27.3-26C5035r/sheng_macos/tree/.cache/xnu-work
             UniXNU/out/sheng/macos-27.3-26C5035r/sheng_macos/tree/.cache/fakeroot
             UniXNU/out/sheng/macos-27.3-26C5035r/sheng_macos/tree/build/xnu
+      - name: Pin the FreeBSD Wi-Fi dependency to its locked commit
+        # Ath12kWifi clones freebsd-src at the lock's branch head while the lock records a
+        # commit; releng/15.1 moved on and the fetch refuses the result. Clone the same
+        # sparse, blob-filtered tree the script expects, then select the locked commit.
+        run: |
+          python3 - <<'PYSTEP'
+          import json, subprocess, sys
+          from pathlib import Path
+          lock = json.loads(Path("device/drivers/Ath12kWifi/tools/source-lock.json").read_text())
+          source = lock["freebsd"]
+          target = Path("device/drivers/Ath12kWifi/deps/freebsd")
+
+          def git(*args):
+              return subprocess.run(["git", "-C", str(target), *args], check=True,
+                                    capture_output=True, text=True).stdout.strip()
+
+          if (target / ".git").exists():
+              if git("rev-parse", "HEAD") != source["commit"]:
+                  raise SystemExit("freebsd checkout is not at the locked commit; remove it to refetch")
+              print("freebsd already at the locked commit")
+              sys.exit(0)
+          target.parent.mkdir(parents=True, exist_ok=True)
+          subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", source["ref"],
+                          "--filter=blob:none", "--sparse", source["url"], str(target)], check=True)
+          subprocess.run(["git", "-C", str(target), "fetch", "-q", "--depth", "1",
+                          "--filter=blob:none", "origin", source["commit"]], check=True)
+          subprocess.run(["git", "-C", str(target), "checkout", "-q", "FETCH_HEAD"], check=True)
+          head = git("rev-parse", "HEAD")
+          if head != source["commit"]:
+              raise SystemExit(f"freebsd checkout at {head}, expected {source['commit']}")
+          print("freebsd pinned to", head)
+          PYSTEP
       - name: Prepare installation
         working-directory: UniXNU
         run: |
