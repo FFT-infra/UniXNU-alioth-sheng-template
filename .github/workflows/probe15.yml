@@ -1,8 +1,0 @@
-name: probe15
-on:
-  workflow_dispatch:
-jobs:
-  probe:
-    runs-on: macos-15
-    steps:
-      - run: uname -a; xcodebuild -version
