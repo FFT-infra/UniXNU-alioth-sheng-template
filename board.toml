@@ -271,9 +271,13 @@ ramdisk_max_bytes = 199229440
 ["os_overrides"."macos-27.3-26C5035r"."payload"."adt"]
 # T6050, the chip of Mac17,11.
 "chip_id" = "6050"
-# The 6 GiB bootstrap window spans the high bank. DarwinBoot lists the holes
-# and firmware reservations so XNU skips them when creating VM pages.
-"owned_memory_size" = "0x180000000"
+# The 4864 MiB window fits the 5 GiB high bank (0x8c0000000..0xa0000000), so DarwinBoot
+# starts it at the bank and the kernel never maps the low bank's inaccessible range
+# 0x8bb300000..0x8c0000000. A 6 GiB window does not fit the high bank: DarwinBoot then
+# starts at the low bank (0x880000000), and its post-ExitBootServices cache flush of the
+# window takes a synchronous external abort at 0x8b9d00000 (observed 2026-11-19). DarwinBoot
+# still lists the holes and firmware reservations so XNU skips them when creating VM pages.
+"owned_memory_size" = "0x130000000"
 "owned_memory_excluded_ranges" = 64
 # DarwinBoot records where the payload RAM disk and the entry's initrd buffer lie in the firmware's memory map
 # (sysctl kern.boot_payload_memory).
