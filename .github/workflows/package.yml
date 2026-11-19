@@ -158,6 +158,8 @@ jobs:
               raise SystemExit(f"freebsd checkout at {head}, expected {source['commit']}")
           print("freebsd pinned to", head)
           PYSTEP
+      - name: Fetch the Wi-Fi locked sources
+        run: python3 device/drivers/Ath12kWifi/tools/fetch-sources.py
       - name: Prepare root policies
         if: inputs.os == '27'
         working-directory: UniXNU
