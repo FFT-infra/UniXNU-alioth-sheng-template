@@ -241,6 +241,16 @@ jobs:
           path: |
             UniXNU/out/sheng/*/*/runtime/data.dbr
             UniXNU/out/sheng/*/*/runtime/inputs.json
+      - name: Upload prelink inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prelink-inputs
+          retention-days: 1
+          if-no-files-found: ignore
+          path: |
+            UniXNU/out/ipsw/24A446/kernelcache.decompressed
+            UniXNU/out/sheng/*/*/tree/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf
       - name: Build root storage
         if: inputs.os == '27'
         working-directory: UniXNU
