@@ -60,8 +60,8 @@ jobs:
       - name: Check out firmware sources
         uses: actions/checkout@v4
         with:
-          repository: UniXNU/uefi-sheng
-          ref: 8156d2e54a9f57818dc8b415a1a7dc28ad9ba4be
+          repository: FFT-infra/uefi-alioth
+          ref: sheng-8g
           path: uefi-sheng
           submodules: false
       - uses: actions/setup-python@v5
