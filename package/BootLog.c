@@ -1004,7 +1004,8 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
              (unsigned long long)(cs_native4k_bytes >> 20), (unsigned long long)(read_ns / 1000000), (unsigned long long)(hash_ns / 1000000));
     at = put(out, at, cap, row, sizeof row);
   }
-  // The digests alone (cssha-digest-time.patch): MiB hashed, wall ms and the threads' own CPU ms, on efficiency cores and
+#if defined(XNU_TARGET_OS_OSX) && XNU_TARGET_OS_OSX
+  // The digests alone (cssha-digest-time.patch, macOS): MiB hashed, wall ms and the threads' own CPU ms, on efficiency cores and
   // on the others; then the chunks of lazy answers made, the ms making them and the ms recording answers.
   if (&cs_native4k_digest_wall && &cs_native4k_digest_cpu && &cs_native4k_digest_bytes && &cs_native4k_chunk_ticks &&
       &cs_native4k_record_ticks && &cs_native4k_chunks_made) {
@@ -1023,6 +1024,7 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
              (unsigned long long)(chunk_ns / 1000000), (unsigned long long)(record_ns / 1000000));
     at = put(out, at, cap, row, sizeof row);
   }
+#endif
   if (log_display_on && &native_legacy_swap_rejected_count && native_legacy_swap_rejected_count) {
     char row[220];
     snprintf(row, sizeof row, "REJ acc=%u rej=%u r=%u st=%x/%x/%x op=%x/%x/%x wh=%ux%u s=%llx/%llx/%llx/%llx cls=%.24s",
