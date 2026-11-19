@@ -213,6 +213,16 @@ jobs:
               objects += ['--object', f'{name}.vroot={ctx.tree}/build/verified-root-{name}/hashes.bin']
           subprocess.run(['./unixnu', 'build', 'userdata', '--os', 'macos-27', *objects], check=True)
           PY
+      - name: Upload prelink inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prelink-inputs
+          retention-days: 1
+          if-no-files-found: ignore
+          path: |
+            UniXNU/out/ipsw/26C5035r/kernelcache.decompressed
+            UniXNU/out/sheng/*/*/tree/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf
       - name: Stage device artifacts
         env:
           BUILD_ROOT_STORAGE: ${{ inputs.root_storage }}
