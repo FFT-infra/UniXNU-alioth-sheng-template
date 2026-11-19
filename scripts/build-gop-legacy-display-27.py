@@ -878,10 +878,16 @@ if MACOS:
     input_objects += [aes_late, AES_OUT / 'aes-bindings.o', AES_OUT / 'aes-addresses.o', AES_OUT / 'SoftwareAesProbe.o']
     print(f'AES: {len(aes_used)} original bindings, {aes_vt} matches the original {len(aes_slots)} diversities')
 print(f'Board drivers: {len(board_objects)} objects')
+stub_objects = []
+if not MACOS:
+    # The macOS profile patches define these for components the iPadOS build links as well
+    # (package/IosKernelStubs.cpp): the stubs keep each caller's documented absence behavior.
+    compile_cpp(KITS / 'IosKernelStubs.cpp', OUT / 'IosKernelStubs.o', ())
+    stub_objects.append(OUT / 'IosKernelStubs.o')
 archive = OUT / 'libNativeLegacyDisplay.late.a'
 archive.unlink(missing_ok=True)
 run(['xcrun', 'ar', 'rcs', archive, late, OUT / 'original-bindings.o', OUT / 'original-addresses.o', OUT / 'LegacyDisplayProbe.o', OUT / 'LegacyDisplaySupport27.o', gop_late,
-     OUT / 'KeyStoreProbe.o', keyevents_late, *input_objects])
+     OUT / 'KeyStoreProbe.o', keyevents_late, *input_objects, *stub_objects])
 sources = [ROOT / 'drivers/GopFramebuffer/NativeLegacyDisplay.cpp', ROOT / 'drivers/GopFramebuffer/NativeLegacyRequest.h',
            ROOT / 'drivers/GopFramebuffer/NativeGOPPresenter.cpp', ROOT / 'drivers/GopFramebuffer/NativeGOPWire.h',
            ROOT / 'drivers/GopFramebuffer/NativeHalfCodes.h', source,
@@ -900,6 +906,8 @@ for directory in ('include', 'kernel', 'src', 'shim'):
     sources += sorted((IRIS / directory).rglob('*.h')) + sorted((IRIS / directory).glob('*.cpp'))
 sources += [KITS / name for name in ('SmmuBypass.h', 'AppsSmmuLock.h', 'UsbProbe.cpp')]
 sources += [KITS / name for name in ('KeyboardCover.cpp', 'KeyboardProbe.cpp', 'KeyboardService.h', 'KeyboardTrace.h', 'TouchLid.h', 'LidClamshell.h', 'ShengSleep.cpp', 'ShengSleep.h', 'Wn8030.c', 'Wn8030.h', 'GeniI2c.c', 'GeniI2c.h')]
+if not MACOS:
+    sources += [KITS / 'IosKernelStubs.cpp']
 sources += [keyboard_firmware]
 sources += [USB / 'QcomDwc3.cpp', USB / 'QcomEusb2Phy.h', USB / 'QcomQmpUsb3.h', USB / 'QcomUcsi.h', ROOT / f'scripts/usb-xdci-{BUILD}.json', ROOT / f'scripts/usb-xhci-{BUILD}.json']
 
