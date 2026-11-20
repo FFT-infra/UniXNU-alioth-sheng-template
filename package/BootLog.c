@@ -150,7 +150,9 @@ extern volatile uint64_t native_ufs_store_rd_ops __attribute__((weak_import)), n
     native_ufs_store_max_ticks __attribute__((weak_import));
 // Command slots (ShengUfs RootCommands.h) and the root windows' reads: their count, transport time and integrity check time (CNTPCT ticks).
 extern void native_ufs_slot_stats(uint32_t *, uint32_t *, uint64_t *) __attribute__((weak_import));
-extern void native_ufs_stats_text(char *, size_t) __attribute__((weak_import));
+// The UFS driver passive transcript (NativeUfs.cpp native_ufs_progress_text): the last command, its SCSI
+// status and sense, and the transport state. Cached software fields only; safe from the log thread.
+extern void native_ufs_progress_text(char *, size_t) __attribute__((weak_import));
 extern volatile uint64_t native_ufs_block_reads __attribute__((weak_import)), native_ufs_read_ticks __attribute__((weak_import)),
     native_ufs_verify_ticks __attribute__((weak_import));
 extern volatile int native_staged_apps_stage __attribute__((weak_import));
@@ -766,11 +768,12 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
       at = put(out, at, cap, io, sizeof io);
     }
   }
-  // UFS command paths, completion waits and root window requests (ShengUfs README, Statistics).
-  LOG_AT("ufs stats");
-  if (&native_ufs_stats_text) {
-    char row[400]; row[0] = 0;
-    native_ufs_stats_text(row, sizeof row);
+  // The UFS transport own transcript: the last command, its SCSI status and sense, the doorbell and
+  // interrupt state, so a device that stopped answering is told apart from a request the layer refused.
+  LOG_AT("ufs transcript");
+  if (&native_ufs_progress_text) {
+    char row[1200]; row[0] = 0;
+    native_ufs_progress_text(row, sizeof row);
     if (row[0]) at = put(out, at, cap, row, sizeof row);
   }
   // The payload's GPU addon (kern_exec.c native_gpu_addon_install): files in it (-1 none), written, already equal, failed, last error; then
