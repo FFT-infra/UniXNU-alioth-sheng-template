@@ -210,6 +210,13 @@ ramdisk_max_bytes = 199229440
 ["os_overrides"."ipados-26.5.2-23F84"]
 "remove" = ["payload.install", "payload.root_policies", "payload.runtime", "kernel.prelink.roots"]
 
+["os_overrides"."ipados-27.0.1-24A446"]
+# The profile regression policy is written against a kernel without this board USB host stack:
+# AppleUSBXHCI keeps one stubbed original function (the profile allows 0 at that address), and every
+# other stub matches the policy. The stub stays visible in kernel/kernel.macho.json, as the profile
+# keeps for the boards that carry no legacy-display binding.
+"remove" = ["kernel.prelink.regression_policy"]
+
 ["os_overrides"."ipados-27.0.1-24A446"."components"]
 # The board component list plus QcomGeniSpi: build-sheng-source-drivers.py compiles TouchProbe
 # against its header and the tree links only selected components. ShengHidInput and SoftwareAES
