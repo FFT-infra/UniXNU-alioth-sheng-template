@@ -958,7 +958,17 @@ void trafficLog(void *, wait_result_t) {
 void autoJoin(void *, wait_result_t) {
   char ssid[33] = {}, psk[65] = {};
   const uint8_t *file = nullptr; size_t length = 0;
-  if (sheng_wifi_file("join.txt", &file, &length) || !file || !length) { thread_terminate(current_thread()); return; }
+  // The Data addon mounts after this thread starts (native_gpu_addon_stage), and the read answers
+  // EAGAIN until it does. Wait for the file instead of giving up on the first look.
+  int file_error = 0;
+  for (unsigned waited = 0; (file_error = sheng_wifi_file("join.txt", &file, &length)) != 0 && waited < 180000; waited += 500) {
+    IOSleep(500);
+  }
+  if (file_error || !file || !length) {
+    log(6, "wifi-net: no join.txt (%d) after the addon wait", file_error);
+    thread_terminate(current_thread());
+    return;
+  }
   { size_t i = 0, o = 0; while (i < length && file[i] != '\n' && o < 32) ssid[o++] = static_cast<char>(file[i++]);
     while (i < length && file[i] != '\n') ++i; ++i; o = 0;
     while (i < length && file[i] != '\n' && o < 64) psk[o++] = static_cast<char>(file[i++]); }
