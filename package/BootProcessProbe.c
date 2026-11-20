@@ -10,7 +10,9 @@
 #include <string.h>
 #include <pexpert/pexpert.h>
 #include <kern/misc_protos.h>
-#include <IOKit/IOLib.h>
+// Allocated at first use. Declared here because the IOKit headers this would need also
+// declare proc_best_name with a const return, which conflicts with the private ABI below.
+extern void *IOMalloc(unsigned long);
 // Exact private process ABI from this source revision's proc.h/proc_internal.h.
 // Do not mix BSD and Mach-private header type universes in one translation unit.
 struct proc;typedef struct proc *proc_t;
