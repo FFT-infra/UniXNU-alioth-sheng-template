@@ -912,17 +912,21 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   // (symbolicate with unslid = address - cache slide), then its thread groups.
   LOG_AT("ui trace roles");
   if (&boot_ui_trace_role_rows) {
-    static char rows[64][120];
+    static char (*rows)[120];
+    if (!rows) rows = IOMalloc(sizeof(char[120]) * 32);
+    if (!rows) return at;
     at = put(out, at, cap, "[stacks]", 10);
     for (unsigned role = 0; role < 4; ++role) {
-      unsigned n = boot_ui_trace_role_rows(role, rows, 64, 2);   // 2: with each thread group's deeper frames
+      unsigned n = boot_ui_trace_role_rows(role, rows, 32, 2);   // 2: with each thread group's deeper frames
       for (unsigned i = 0; i < n; ++i) at = put(out, at, cap, rows[i], 120);
     }
   }
   // Threads stuck in an uninterruptible kernel wait for 20 s or more, in any process (BootUiTraceProbe.c boot_stuck_scan).
   LOG_AT("stuck scan");
   if (&boot_stuck_scan && &boot_stuck_rows) {
-    static char rows[40][120];
+    static char (*rows)[120];
+    if (!rows) rows = IOMalloc(sizeof(char[120]) * 40);
+    if (!rows) return at;
     boot_stuck_scan(now);
     unsigned n = boot_stuck_rows(rows, 40);
     at = put(out, at, cap, "[stuck]", 8);
@@ -931,7 +935,9 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   // The busiest kernel threads of the last interval (BootUiTraceProbe.c boot_kcpu_scan).
   LOG_AT("kernel cpu scan");
   if (&boot_kcpu_scan && &boot_kcpu_rows) {
-    static char rows[6][120];
+    static char (*rows)[120];
+    if (!rows) rows = IOMalloc(sizeof(char[120]) * 6);
+    if (!rows) return at;
     boot_kcpu_scan(now);
     unsigned n = boot_kcpu_rows(rows, 6);
     if (n) at = put(out, at, cap, "[kernel cpu]", 13);
@@ -940,15 +946,18 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   // The Wi-Fi receive path's counters (WifiNet.cpp), while frames arrive.
   LOG_AT("wifi rx");
   if (&sheng_wifi_rx_rows) {
-    static char rows[4][120];
+    static char (*rows)[120];
+    if (!rows) rows = IOMalloc(sizeof(char[120]) * 4);
+    if (!rows) return at;
     unsigned n = sheng_wifi_rx_rows(rows, 4);
     if (n) at = put(out, at, cap, "[wifi rx]", 10);
     for (unsigned i = 0; i < n; ++i) at = put(out, at, cap, rows[i], 120);
   }
   LOG_AT("display state");
   if (log_display_on && &native_legacy_state_words) {
-    static char words[240];
-    if (native_legacy_state_words(words, sizeof words)) {at = put(out, at, cap, "[display state]", 16); at = put(out, at, cap, words, sizeof words);}
+    static char *words;
+    if (!words) words = IOMalloc(240);
+    if (words && native_legacy_state_words(words, 240)) {at = put(out, at, cap, "[display state]", 16); at = put(out, at, cap, words, 240);}
   }
   if (log_display_on && &native_legacy_prepare_report) {
     char row[220];
@@ -1045,8 +1054,9 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   }
   LOG_AT("swap timeline");
   if (log_display_on && &native_legacy_swap_timeline) {
-    static char timeline[4096];
-    if (native_legacy_swap_timeline(timeline, sizeof timeline)) {
+    static char *timeline;
+    if (!timeline) timeline = IOMalloc(4096);
+    if (timeline && native_legacy_swap_timeline(timeline, 4096)) {
       at = put(out, at, cap, "[swap timeline]", 16);
       for (char *line = timeline; *line && at + 130 < cap;) {
         char *end = strchr(line, '\n');
@@ -1065,8 +1075,9 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   // The framebuffer user clients' notification slots (is the render server's vsync registered?).
   LOG_AT("display clients");
   if (log_gpu_on && &native_legacy_clients_dump) {
-    static char dump[4096];
-    unsigned n = native_legacy_clients_dump(dump, sizeof dump);
+    static char *dump;
+    if (!dump) dump = IOMalloc(4096);
+    unsigned n = dump ? native_legacy_clients_dump(dump, 4096) : 0;
     if (n) {
       at = put(out, at, cap, "[mfb clients]", 14);
       for (char *line = dump; *line && at + 130 < cap;) {
@@ -1081,8 +1092,9 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   // The display object's properties now (refresh intervals, timing, scale): the lines the original driver published.
   LOG_AT("display properties");
   if (log_display_on && &native_legacy_properties_now) {
-    static char props[7168];
-    unsigned n = native_legacy_properties_now(props, sizeof props);
+    static char *props;
+    if (!props) props = IOMalloc(4096);
+    unsigned n = props ? native_legacy_properties_now(props, 4096) : 0;
     if (n) {
       at = put(out, at, cap, "[display]", 10);
       // The XML is one long line; 116 characters per row with a prefix, and a tag per key on its own row so refresh/timing keys stand out.
@@ -1119,8 +1131,9 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   // The traced processes' threads with the highest context-switch rate (they are idle in every stack sample but woken hundreds of times a second).
   LOG_AT("ui trace hot");
   if (&boot_ui_trace_hot_rows) {
-    static char hot[96][120];
-    unsigned n = boot_ui_trace_hot_rows(hot, 96);
+    static char (*hot)[120];
+    if (!hot) hot = IOMalloc(sizeof(char[120]) * 32);
+    unsigned n = hot ? boot_ui_trace_hot_rows(hot, 32) : 0;
     if (n) {char head[64]; snprintf(head, sizeof head, "[hot] kernel slide=%lx", (unsigned long)vm_kernel_slide); at = put(out, at, cap, head, sizeof head);}
     for (unsigned i = 0; i < n; ++i) at = put(out, at, cap, hot[i], 120);
   }
@@ -2620,8 +2633,9 @@ static size_t compose(char *out, size_t cap, uint32_t slot, unsigned now) {
   // The sampling profile (BootProgress.c): which processes the interrupts landed in and where, at most 6 KiB of the slot.
   LOG_AT("profile rows");
   if (&boot_progress_profile_rows) {
-    static char profile[6144];
-    const size_t n = boot_progress_profile_rows(profile, sizeof profile);
+    static char *profile;
+    if (!profile) profile = IOMalloc(4096);
+    const size_t n = profile ? boot_progress_profile_rows(profile, 4096) : 0;
     if (n) {
       at = put(out, at, cap, "[profile]", 10);
       for (char *line = profile; *line;) {

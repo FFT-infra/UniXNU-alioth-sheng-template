@@ -10,6 +10,7 @@
 #include <string.h>
 #include <pexpert/pexpert.h>
 #include <kern/misc_protos.h>
+#include <IOKit/IOLib.h>
 // Exact private process ABI from this source revision's proc.h/proc_internal.h.
 // Do not mix BSD and Mach-private header type universes in one translation unit.
 struct proc;typedef struct proc *proc_t;
@@ -28,7 +29,7 @@ extern int boot_ui_trace_role_peer(unsigned) __attribute__((weak_import));
 
 volatile unsigned boot_process_passes,boot_process_seen;
 volatile unsigned boot_process_attempts,boot_process_busy;
-static char capture_rows[10][120],published_rows[10][120];
+static char (*capture_rows)[120],(*published_rows)[120];
 static unsigned capture_seen,capture_passes,published_passes,published_seen,publish_lock;
 static unsigned chrono_focus_initialized;
 static char focus_name[32],focus2_name[32],focus3_name[32],focus4_name[32];
@@ -93,6 +94,9 @@ void boot_process_capture(void) {
  // Exactly one capture worker. Refuse reentry without waiting or modifying its
  // partial results, including in host failure-injection checks.
  if(__atomic_exchange_n(&boot_process_busy,1,__ATOMIC_ACQUIRE))return;
+ if(!capture_rows)capture_rows=IOMalloc(sizeof(char[120])*10);
+ if(!published_rows)published_rows=IOMalloc(sizeof(char[120])*10);
+ if(!capture_rows || !published_rows) {__atomic_store_n(&boot_process_busy,0,__ATOMIC_RELEASE);return;}
  __atomic_fetch_add(&boot_process_attempts,1,__ATOMIC_RELAXED);
  if(!chrono_focus_initialized) {
   unsigned focus=0;PE_parse_boot_argn("boot-ui-chrono",&focus,sizeof(focus));
@@ -133,7 +137,7 @@ void boot_process_capture(void) {
  if(boot_ui_trace_publish)boot_ui_trace_publish();
  ++capture_passes;
  if(!__atomic_exchange_n(&publish_lock,1,__ATOMIC_ACQUIRE)) {
-  memcpy(published_rows,capture_rows,sizeof(published_rows));
+  memcpy(published_rows,capture_rows,sizeof(char[120])*10);
   published_passes=capture_passes;published_seen=capture_seen;
   __atomic_store_n(&publish_lock,0,__ATOMIC_RELEASE);
  }
@@ -142,6 +146,7 @@ void boot_process_capture(void) {
 void boot_process_snapshot(void) {
  // One reader: the diagnostic monitor. Never allocate, walk processes or wait
  // for the worker; leave the previous complete display snapshot if it is busy.
+ if(!published_rows)return;
  if(__atomic_exchange_n(&publish_lock,1,__ATOMIC_ACQUIRE))return;
  memcpy(boot_process_rows,published_rows,sizeof(boot_process_rows));
  boot_process_passes=published_passes;boot_process_seen=published_seen;
